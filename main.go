@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -33,6 +34,10 @@ func main() {
 	atprotoPassword := os.Getenv("ATPROTO_PASSWORD")
 	ignoreArchived := os.Getenv("IGNORE_ARCHIVED") == "true"
 	dryRun := os.Getenv("DRY_RUN") == "true"
+	processedIDsFile := os.Getenv("PROCESSED_IDS_FILE")
+	if processedIDsFile == "" {
+		processedIDsFile = "processed-bookmarks.csv"
+	}
 
 	xrpc, err := getXrpcClient(atprotoHost, atprotoIdentifier, atprotoPassword)
 	if err != nil {
@@ -44,7 +49,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = importBookmarks(context.Background(), xrpc, bookmarks, dryRun, ignoreArchived)
+	processedIDs, err := loadProcessedIDs(processedIDsFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = importBookmarks(context.Background(), xrpc, bookmarks, dryRun, ignoreArchived, processedIDsFile, processedIDs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,10 +150,29 @@ func getXrpcClient(host, identifier, password string) (*xrpc.Client, error) {
 	return client, nil
 }
 
-func importBookmarks(ctx context.Context, client *xrpc.Client, bookmarks []bookmark, dryRun, ignoreArchived bool) error {
+func importBookmarks(ctx context.Context, client *xrpc.Client, bookmarks []bookmark, dryRun, ignoreArchived bool, processedIDsFile string, processedIDs map[int]bool) error {
+	var writer *csv.Writer
+	var file *os.File
+	var err error
 
-	fmt.Println("Linkding ID,AT URI")
+	// Open processed IDs file for writing (unless dry run)
+	if !dryRun {
+		file, err = os.OpenFile(processedIDsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		writer = csv.NewWriter(file)
+		defer writer.Flush()
+	}
+
 	for _, bookmark := range bookmarks {
+		// Skip already processed bookmarks
+		if processedIDs[bookmark.ID] {
+			log.Printf("Skipping bookmark %d (already processed)", bookmark.ID)
+			continue
+		}
+
 		if bookmark.IsArchived && ignoreArchived {
 			continue
 		}
@@ -162,7 +191,15 @@ func importBookmarks(ctx context.Context, client *xrpc.Client, bookmarks []bookm
 			return err
 		}
 
-		fmt.Printf("%d,%s\n", bookmark.ID, uri)
+		fmt.Printf("Processed %d: %s --> %s\n", bookmark.ID, bookmark.URL, uri)
+
+		// Write processed ID to file
+		if !dryRun {
+			err = writer.Write([]string{fmt.Sprintf("%d", bookmark.ID), uri})
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -234,6 +271,45 @@ func createAnnotation(ctx context.Context, client *xrpc.Client, b *bookmark, dry
 	}
 
 	return result.Uri, nil
+}
+
+func loadProcessedIDs(filename string) (map[int]bool, error) {
+	processedIDs := make(map[int]bool)
+
+	file, err := os.Open(filename)
+	if err != nil {
+		// File doesn't exist yet, which is fine
+		if os.IsNotExist(err) {
+			return processedIDs, nil
+		}
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	for {
+		record, err := reader.Read()
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			log.Printf("Warning: error reading CSV: %v", err)
+			continue
+		}
+
+		if len(record) < 1 {
+			continue
+		}
+
+		id, err := strconv.Atoi(strings.TrimSpace(record[0]))
+		if err != nil {
+			log.Printf("Warning: invalid ID in processed file: %s", record[0])
+			continue
+		}
+		processedIDs[id] = true
+	}
+
+	return processedIDs, nil
 }
 
 // Directly from margin.at's code

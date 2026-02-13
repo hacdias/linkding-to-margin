@@ -20,34 +20,25 @@ go build
 
 ## Usage
 
-### Step 1: Set up environment variables
+### Configuration
 
-Create a `.env` file in your working directory with the following variables:
+Copy [`.env.example`](.env.example) to `.env` and fill the environment variables as needed.
 
-```bash
-# Linkding configuration
-LINKDING_ENDPOINT=https://your-linkding-instance.com
-LINKDING_API_KEY=your-linkding-api-key
+**Required variables:**
 
-# AT Protocol (e.g. Bluesky) configuration
-ATPROTO_HOST=https://bsky.social
-ATPROTO_IDENTIFIER=your.bsky.social
-ATPROTO_PASSWORD=your-app-password
+- `ATPROTO_HOST`: The AT Protocol PDS host (e.g., `https://bsky.social`)
+- `ATPROTO_IDENTIFIER`: Your AT Protocol handle (e.g., `username.bsky.social`)
+- `ATPROTO_PASSWORD`: An (app) password for your AT Protocol account
+- `LINKDING_ENDPOINT`: The base URL of your Linkding instance
+- `LINKDING_API_KEY`: Your Linkding API key (found in Linkding settings)
 
-# Optional configuration
-DRY_RUN=true
-IGNORE_ARCHIVED=true
-```
+**Optional variables:**
 
-- **LINKDING_ENDPOINT**: The base URL of your Linkding instance
-- **LINKDING_API_KEY**: Your Linkding API key (found in Linkding settings)
-- **ATPROTO_HOST**: The AT Protocol PDS host (default is `https://bsky.social`)
-- **ATPROTO_IDENTIFIER**: Your AT Protocol handle (e.g., `username.bsky.social`)
-- **ATPROTO_PASSWORD**: An [app password](https://bsky.app/settings/app-passwords) for your AT Protocol account
-- **DRY_RUN** (optional): Set to `true` to preview what would be imported without making actual changes (useful for testing)
-- **IGNORE_ARCHIVED** (optional): Set to `true` to skip importing archived bookmarks from Linkding
+- `DRY_RUN`: Set to `true` to preview records without creating them
+- `IGNORE_ARCHIVED`: Set to `true` to skip archived bookmarks
+- `PROCESSED_IDS_FILE`: Path to the CSV file tracking imported bookmarks (default: `processed-bookmarks.csv`)
 
-### Step 2: Run the tool
+### Running the import
 
 ```bash
 linkding-to-margin
@@ -55,11 +46,16 @@ linkding-to-margin
 
 The tool will:
 
-1. Fetch all bookmarks from your Linkding instance
-2. Create corresponding bookmark or annotation records in AT Protocol
-3. Print the number of bookmarks imported
+1. Load environment variables from `.env`
+2. Fetch all bookmarks from your Linkding instance
+3. Import them to your AT Protocol account as bookmarks or annotations
+4. Display the count of imported bookmarks
 
-**Note**: For bookmarks with notes, they will be imported as annotations. Bookmarks without notes will be imported as regular bookmarks.
+**Note:** Bookmarks with notes will be imported as annotations. Bookmarks without notes will be imported as regular bookmarks.
+
+### Error Recovery
+
+If the import fails partway through, simply run the command again. The tool automatically tracks successfully imported bookmarks in `processed-bookmarks.csv` and will resume from where it left off. You can manually edit or delete the CSV file if needed to restart the import.
 
 ## License
 
