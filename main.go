@@ -200,6 +200,8 @@ func importBookmarks(ctx context.Context, client *xrpc.Client, bookmarks []bookm
 				return err
 			}
 		}
+
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	return nil
