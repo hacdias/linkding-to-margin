@@ -1,6 +1,6 @@
 # Linkding to Margin.at
 
-> Import your [Linkding](https://docs.linkding.app/) bookmarks to [Margin.at](https://margin.at/), an AT Protocol bookmark service.
+> Import your [Linkding](https://linkding.link/) bookmarks to [Margin.at](https://margin.at/), an AT Protocol bookmark service.
 
 This tool fetches all bookmarks from your Linkding instance and imports them as bookmarks or annotations (if notes are present) to your AT Protocol account.
 
