@@ -262,7 +262,7 @@ func createAnnotation(ctx context.Context, client *xrpc.Client, b *bookmark, dry
 	}
 
 	result, err := agnostic.RepoCreateRecord(ctx, client, &agnostic.RepoCreateRecord_Input{
-		Collection: "at.margin.bookmark",
+		Collection: "at.margin.annotation",
 		Repo:       client.Auth.Did,
 		Record:     record,
 	})
