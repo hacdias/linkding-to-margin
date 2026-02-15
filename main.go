@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,9 +18,12 @@ import (
 
 	"github.com/bluesky-social/indigo/api/agnostic"
 	"github.com/bluesky-social/indigo/api/atproto"
+	"github.com/bluesky-social/indigo/atproto/syntax"
 	"github.com/bluesky-social/indigo/xrpc"
 	"github.com/joho/godotenv"
 )
+
+var clockId = uint(rand.Uint64())
 
 func main() {
 	err := godotenv.Load()
@@ -225,10 +229,14 @@ func createBookmark(ctx context.Context, client *xrpc.Client, b *bookmark, dryRu
 		return "", nil
 	}
 
+	// Make a record key based on the original bookmark's timestamp to preserve order.
+	rkey := syntax.NewTID(b.DateAdded.UnixMicro(), clockId).String()
+
 	result, err := agnostic.RepoCreateRecord(ctx, client, &agnostic.RepoCreateRecord_Input{
 		Collection: "at.margin.bookmark",
 		Repo:       client.Auth.Did,
 		Record:     record,
+		Rkey:       &rkey,
 	})
 	if err != nil {
 		return "", err
@@ -263,10 +271,14 @@ func createAnnotation(ctx context.Context, client *xrpc.Client, b *bookmark, dry
 		return "", nil
 	}
 
+	// Make a record key based on the original bookmark's timestamp to preserve order.
+	rkey := syntax.NewTID(b.DateAdded.UnixMicro(), clockId).String()
+
 	result, err := agnostic.RepoCreateRecord(ctx, client, &agnostic.RepoCreateRecord_Input{
 		Collection: "at.margin.annotation",
 		Repo:       client.Auth.Did,
 		Record:     record,
+		Rkey:       &rkey,
 	})
 	if err != nil {
 		return "", err
